@@ -43,6 +43,8 @@ import sys
 import time
 import signal
 import subprocess
+from aiohttp.wsgi import WSGIServerHttpProtocol
+import asyncio
 
 try:
     import thread
@@ -468,23 +470,16 @@ class ForkingWSGIServer(ForkingMixIn, BaseWSGIServer):
 
 def make_server(host, port, app=None, threaded=False, processes=1,
                 request_handler=None, passthrough_errors=False,
-                ssl_context=None):
+                ssl_context=None, loop=None):
     """Create a new server instance that is either threaded, or forks
     or just processes one request after another.
     """
-    if threaded and processes > 1:
-        raise ValueError("cannot have a multithreaded and "
-                         "multi process server.")
-    elif threaded:
-        return ThreadedWSGIServer(host, port, app, request_handler,
-                                  passthrough_errors, ssl_context)
-    elif processes > 1:
-        return ForkingWSGIServer(host, port, app, processes, request_handler,
-                                 passthrough_errors, ssl_context)
-    else:
-        return BaseWSGIServer(host, port, app, request_handler,
-                              passthrough_errors, ssl_context)
+    if threaded or processes > 1:
+        raise ValueError("Multi-thread or process servers not supported.")
 
+    asyncio.set_event_loop(loop)
+    asyncio.async(loop.create_server(lambda: WSGIServerHttpProtocol(app, readpayload=True), host, port))
+    loop.run_forever()
 
 def _iter_module_files():
     # The list call is necessary on Python 3 in case the module
@@ -606,9 +601,10 @@ def restart_with_reloader():
 def run_with_reloader(main_func, extra_files=None, interval=1):
     """Run the given function in an independent python interpreter."""
     import signal
+    loop = asyncio.get_event_loop()
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        thread.start_new_thread(main_func, ())
+        thread.start_new_thread(main_func, (loop, None))
         try:
             reloader_loop(extra_files, interval)
         except KeyboardInterrupt:
@@ -686,10 +682,10 @@ def run_simple(hostname, port, application, use_reloader=False,
         from werkzeug.wsgi import SharedDataMiddleware
         application = SharedDataMiddleware(application, static_files)
 
-    def inner():
+    def inner(loop, _):
         make_server(hostname, port, application, threaded,
                     processes, request_handler,
-                    passthrough_errors, ssl_context).serve_forever()
+                    passthrough_errors, ssl_context, loop)
 
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
         display_hostname = hostname != '*' and hostname or 'localhost'
@@ -707,7 +703,7 @@ def run_simple(hostname, port, application, use_reloader=False,
         test_socket.close()
         run_with_reloader(inner, extra_files, reloader_interval)
     else:
-        inner()
+        inner(asyncio.get_event_loop(), None)
 
 def main():
     '''A simple command-line interface for :py:func:`run_simple`.'''

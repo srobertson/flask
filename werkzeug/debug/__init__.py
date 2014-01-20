@@ -11,6 +11,8 @@
 import json
 import mimetypes
 from os.path import join, dirname, basename, isfile
+from asyncio import coroutine
+from werkzeug.utils import call_maybe_yield
 from werkzeug.wrappers import BaseRequest as Request, BaseResponse as Response
 from werkzeug.debug.tbtools import get_current_traceback, render_console_html
 from werkzeug.debug.console import Console
@@ -81,15 +83,13 @@ class DebuggedApplication(object):
         self.show_hidden_frames = show_hidden_frames
         self.secret = gen_salt(20)
 
+    @coroutine
     def debug_application(self, environ, start_response):
         """Run the application and conserve the traceback frames."""
         app_iter = None
         try:
-            app_iter = self.app(environ, start_response)
-            for item in app_iter:
-                yield item
-            if hasattr(app_iter, 'close'):
-                app_iter.close()
+            app_iter = yield from call_maybe_yield(self.app, environ, start_response)
+            return app_iter
         except Exception:
             if hasattr(app_iter, 'close'):
                 app_iter.close()
@@ -116,12 +116,12 @@ class DebuggedApplication(object):
                     'Debugging middleware caught exception in streamed '
                     'response at a point where response headers were already '
                     'sent.\n')
+                traceback.log(environ['wsgi.errors'])
             else:
-                yield traceback.render_full(evalex=self.evalex,
+                traceback.log(environ['wsgi.errors'])
+                return traceback.render_full(evalex=self.evalex,
                                             secret=self.secret) \
                                .encode('utf-8', 'replace')
-
-            traceback.log(environ['wsgi.errors'])
 
     def execute_command(self, request, command, frame):
         """Execute a command in a console."""

@@ -77,21 +77,19 @@ class run_audit(Command):
             print("No problems found in sourcecode.")
 
 setup(
-    name='Flask',
+    name='Flask Async',
     version='0.11-dev',
-    url='http://github.com/mitsuhiko/flask/',
+    url='http://github.com/mrdon/flask/',
     license='BSD',
-    author='Armin Ronacher',
+    author='Armin Ronacher, Don Brown',
     author_email='armin.ronacher@active-4.com',
-    description='A microframework based on Werkzeug, Jinja2 '
-                'and good intentions',
+    description='A fork of Flask to support asyncio',
     long_description=__doc__,
-    packages=['flask', 'flask.ext', 'flask.testsuite'],
+    packages=['flask', 'flask.ext', 'flask.testsuite', 'werkzeug'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'Werkzeug>=0.7',
         'Jinja2>=2.4',
         'itsdangerous>=0.21'
     ],
