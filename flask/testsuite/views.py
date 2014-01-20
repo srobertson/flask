@@ -106,7 +106,7 @@ class ViewTestCase(FlaskTestCase):
 
         app.add_url_rule('/', view_func=Index.as_view('index'))
         c = app.test_client()
-        rv = c.get('/')
+        rv = yield from c.get('/')
         self.assert_equal(rv.headers['X-Parachute'], 'awesome')
         self.assert_equal(rv.data, b'Awesome')
 

@@ -753,7 +753,7 @@ class BasicFunctionalityTestCase(FlaskTestCase):
             self.assert_equal(rv.data, b'')
             self.assert_equal(rv.mimetype, 'text/html')
 
-            rv = flask.make_response('Awesome')
+            rv = yield from flask.make_response('Awesome')
             self.assert_equal(rv.status_code, 200)
             self.assert_equal(rv.data, b'Awesome')
             self.assert_equal(rv.mimetype, 'text/html')
@@ -766,7 +766,7 @@ class BasicFunctionalityTestCase(FlaskTestCase):
     def test_make_response_with_response_instance(self):
         app = flask.Flask(__name__)
         with app.test_request_context():
-            rv = flask.make_response(
+            rv = yield from flask.make_response(
                 flask.jsonify({'msg': 'W00t'}), 400)
             self.assertEqual(rv.status_code, 400)
             self.assertEqual(rv.data, b'{\n  "msg": "W00t"\n}')

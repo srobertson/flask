@@ -15,6 +15,9 @@ from random import random
 from itertools import chain
 from tempfile import TemporaryFile
 from io import BytesIO
+import asyncio
+from asyncio.base_events import BaseEventLoop
+from asyncio.selector_events import BaseSelectorEventLoop
 
 try:
     from urllib2 import Request as U2Request
@@ -655,7 +658,7 @@ class Client(object):
         """Runs the wrapped WSGI app with the given environment."""
         if self.cookie_jar is not None:
             self.cookie_jar.inject_wsgi(environ)
-        rv = run_wsgi_app(self.application, environ, buffered=buffered)
+        rv = yield from run_wsgi_app(self.application, environ, buffered=buffered)
         if self.cookie_jar is not None:
             self.cookie_jar.extract_wsgi(environ, rv[2])
         return rv
@@ -732,7 +735,14 @@ class Client(object):
             finally:
                 builder.close()
 
-        response = self.run_wsgi_app(environ, buffered=buffered)
+        try:
+            loop = asyncio.get_event_loop()
+        except:
+            loop = asyncio.get_event_loop_policy().new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        task = asyncio.Task(call_maybe_yield (self.run_wsgi_app, environ, buffered=buffered))
+        response = loop.run_until_complete(task)
 
         # handle redirects
         redirect_chain = []
