@@ -8,6 +8,7 @@
     :copyright: (c) 2014 by Armin Ronacher.
     :license: BSD, see LICENSE for more details.
 """
+import logging
 
 import os
 import sys
@@ -15,6 +16,7 @@ from threading import Lock
 from datetime import timedelta
 from itertools import chain
 from functools import update_wrapper
+import asyncio
 
 from werkzeug.datastructures import ImmutableDict
 from werkzeug.routing import Map, Rule, RequestRedirect, BuildError
@@ -24,6 +26,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError, \
 from .helpers import _PackageBoundObject, url_for, get_flashed_messages, \
      locked_cached_property, _endpoint_from_view_func, find_package
 from . import json
+from werkzeug.utils import yields, call_maybe_yield
 from .wrappers import Request, Response
 from .config import ConfigAttribute, Config
 from .ctx import RequestContext, AppContext, _AppCtxGlobals
@@ -1470,10 +1473,10 @@ class Flask(_PackageBoundObject):
             request_started.send(self)
             rv = self.preprocess_request()
             if rv is None:
-                rv = self.dispatch_request()
+                rv = yield from call_maybe_yield(self.dispatch_request)
         except Exception as e:
             rv = self.handle_user_exception(e)
-        response = self.make_response(rv)
+        response = yield from self.make_response(rv)
         response = self.process_response(response)
         request_finished.send(self, response=response)
         return response
@@ -1572,7 +1575,7 @@ class Flask(_PackageBoundObject):
                 rv = self.response_class(rv, headers=headers, status=status)
                 headers = status = None
             else:
-                rv = self.response_class.force_type(rv, request.environ)
+                rv = yield from call_maybe_yield(self.response_class.force_type, rv, request.environ)
 
         if status is not None:
             if isinstance(status, string_types):
@@ -1812,11 +1815,13 @@ class Flask(_PackageBoundObject):
         error = None
         try:
             try:
-                response = self.full_dispatch_request()
+                response = yield from self.full_dispatch_request()
             except Exception as e:
                 error = e
-                response = self.make_response(self.handle_exception(e))
-            return response(environ, start_response)
+                response = yield from self.make_response(self.handle_exception(e))
+            rv = yield from call_maybe_yield(response, environ, start_response)
+
+            return rv
         finally:
             if self.should_ignore_error(error):
                 error = None
@@ -1831,7 +1836,8 @@ class Flask(_PackageBoundObject):
 
     def __call__(self, environ, start_response):
         """Shortcut for :attr:`wsgi_app`."""
-        return self.wsgi_app(environ, start_response)
+        rv = self.wsgi_app(environ, start_response)
+        return rv
 
     def __repr__(self):
         return '<%s %r>' % (

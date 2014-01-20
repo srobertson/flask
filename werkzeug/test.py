@@ -33,7 +33,7 @@ from werkzeug.wrappers import BaseRequest
 from werkzeug.urls import url_encode, url_fix, iri_to_uri, url_unquote, \
      url_unparse, url_parse
 from werkzeug.wsgi import get_host, get_current_url, ClosingIterator
-from werkzeug.utils import dump_cookie
+from werkzeug.utils import dump_cookie, call_maybe_yield
 from werkzeug.datastructures import FileMultiDict, MultiDict, \
      CombinedMultiDict, Headers, FileStorage
 
@@ -851,7 +851,7 @@ def run_wsgi_app(app, environ, buffered=False):
         response[:] = [status, headers]
         return buffer.append
 
-    app_iter = app(environ, start_response)
+    app_iter = yield from call_maybe_yield(app, environ, start_response)
 
     # when buffering we emit the close call early and convert the
     # application iterator into a regular list

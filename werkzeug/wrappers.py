@@ -34,7 +34,7 @@ from werkzeug.http import HTTP_STATUS_CODES, \
 from werkzeug.urls import url_decode, iri_to_uri, url_join
 from werkzeug.formparser import FormDataParser, default_stream_factory
 from werkzeug.utils import cached_property, environ_property, \
-     header_property, get_content_type
+     header_property, get_content_type, yields, call_maybe_yield
 from werkzeug.wsgi import get_current_url, get_host, \
      ClosingIterator, get_input_stream, get_content_length
 from werkzeug.datastructures import MultiDict, CombinedMultiDict, Headers, \
@@ -817,11 +817,13 @@ class BaseResponse(object):
         :param environ: a WSGI environment object.
         :return: a response object.
         """
+
         if not isinstance(response, BaseResponse):
             if environ is None:
                 raise TypeError('cannot convert WSGI application into '
                                 'response objects without an environ')
-            response = BaseResponse(*_run_wsgi_app(response, environ))
+            rv = yield from call_maybe_yield(_run_wsgi_app, response, environ)
+            response = BaseResponse(*rv)
         response.__class__ = cls
         return response
 

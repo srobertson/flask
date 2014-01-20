@@ -10,10 +10,13 @@
     :copyright: (c) 2013 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
+import inspect
 import re
 import os
 import sys
 import pkgutil
+from asyncio import coroutine
+
 try:
     from html.entities import name2codepoint
 except ImportError:
@@ -30,6 +33,18 @@ _entity_re = re.compile(r'&([^;]+);')
 _filename_ascii_strip_re = re.compile(r'[^A-Za-z0-9_.-]')
 _windows_device_files = ('CON', 'AUX', 'COM1', 'COM2', 'COM3', 'COM4', 'LPT1',
                          'LPT2', 'LPT3', 'PRN', 'NUL')
+
+
+def yields(value):
+    import asyncio
+    return isinstance(value, asyncio.futures.Future) or inspect.isgenerator(value)
+
+@coroutine
+def call_maybe_yield(func, *args, **kwargs):
+    rv = func(*args, **kwargs)
+    if yields(rv):
+        rv = yield from rv
+    return rv
 
 
 class cached_property(object):
