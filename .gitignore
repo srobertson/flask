@@ -8,3 +8,7 @@ dist
 *.egg-info
 _mailinglist
 .tox
+build
+.idea
+venv
+*.iml
