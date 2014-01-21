@@ -1,8 +1,8 @@
 
 
-                          // Flask //
+                          // Flask Async//
 
-              web development, one drop at a time
+              web development, one drop at _any_ time
 
 
     ~ What is Flask?
@@ -11,49 +11,28 @@
       and Jinja2.  It's intended for getting started very quickly
       and was developed with best intentions in mind.
 
-    ~ Is it ready?
+    ~ What is Flask Async?
 
-      It's still not 1.0 but it's shaping up nicely and is
-      already widely used.  Consider the API to slightly
-      improve over time but we don't plan on breaking it.
+      It's a fork of Flask to run on Python 3.3+ using asyncio.
 
     ~ What do I need?
 
-      Jinja 2.4 and Werkzeug 0.7 or later.
-      `pip` or `easy_install` will install them for you if you do
-      `pip install Flask`.  I encourage you to use a virtualenv.
-      Check the docs for complete installation and usage
-      instructions.
+      Just Jinja 2.4.  A fork of Werkzeug is included.
 
-    ~ Where are the docs?
+    ~ What does it look like?
 
-      Go to http://flask.pocoo.org/docs/ for a prebuilt version
-      of the current documentation.  Otherwise build them yourself
-      from the sphinx sources in the docs folder.
+      Pretty much what a Flask app looks like:
 
-    ~ Where are the tests?
+        from asyncio import coroutine, sleep
+        from flask import Flask, request
 
-      Good that you're asking.  The tests are in the
-      flask/testsuite package.  To run the tests use the
-      `run-tests.py` file:
+        app = Flask(__name__)
 
-        $ python run-tests.py
+        @app.route("/hello/<string:name>")
+        @coroutine
+        def say_hi(name):
+            yield from sleep(2)
+            return "it worked %s" % request.args.get("name", name)
 
-      If it's not enough output for you, you can use the
-      `--verbose` flag:
-
-        $ python run-tests.py --verbose
-
-      If you just want one particular testcase to run you can
-      provide it on the command line:
-
-        $ python run-tests.py test_to_run
-
-    ~ Where can I get help?
-
-      Either use the #pocoo IRC channel on irc.freenode.net or
-      ask on the mailinglist: http://flask.pocoo.org/mailinglist/
-
-      See http://flask.pocoo.org/community/ for more resources.
-
+        app.run()
 
