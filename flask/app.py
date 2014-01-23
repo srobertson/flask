@@ -1468,7 +1468,7 @@ class Flask(_PackageBoundObject):
 
         .. versionadded:: 0.7
         """
-        self.try_trigger_before_first_request_functions()
+        yield from self.try_trigger_before_first_request_functions()
         try:
             request_started.send(self)
             rv = self.preprocess_request()
@@ -1495,7 +1495,7 @@ class Flask(_PackageBoundObject):
                 return
             self._got_first_request = True
             for func in self.before_first_request_funcs:
-                func()
+                yield from call_maybe_yield(func)
 
     def make_default_options_response(self):
         """This method is called to create the default `OPTIONS` response.
