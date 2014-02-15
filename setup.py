@@ -78,7 +78,7 @@ class run_audit(Command):
 
 setup(
     name='Flask Async',
-    version='0.11-dev',
+    version='0.11.0.a1',
     url='http://github.com/mrdon/flask/',
     license='BSD',
     author='Armin Ronacher, Don Brown',
