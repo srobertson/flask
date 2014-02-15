@@ -359,7 +359,7 @@ def flash(message, category='message'):
     #     session.setdefault('_flashes', []).append((category, message))
     #
     # This assumed that changes made to mutable structures in the session are
-    # are always in sync with the sess on object, which is not true for session
+    # are always in sync with the session object, which is not true for session
     # implementations that use external storage for keeping their keys/values.
     flashes = session.get('_flashes', [])
     flashes.append((category, message))
@@ -538,14 +538,19 @@ def send_file(filename_or_fp, mimetype=None, as_attachment=False,
         rv.expires = int(time() + cache_timeout)
 
     if add_etags and filename is not None:
-        rv.set_etag('flask-%s-%s-%s' % (
-            os.path.getmtime(filename),
-            os.path.getsize(filename),
-            adler32(
-                filename.encode('utf-8') if isinstance(filename, text_type)
-                else filename
-            ) & 0xffffffff
-        ))
+        try:
+            rv.set_etag('flask-%s-%s-%s' % (
+                os.path.getmtime(filename),
+                os.path.getsize(filename),
+                adler32(
+                    filename.encode('utf-8') if isinstance(filename, text_type)
+                    else filename
+                ) & 0xffffffff
+            ))
+        except OSError:
+            warn('Access %s failed, maybe it does not exist, so ignore etags in '
+                 'headers' % filename, stacklevel=2)
+
         if conditional:
             rv = rv.make_conditional(request)
             # make sure we don't send x-sendfile for servers that
@@ -610,6 +615,8 @@ def send_from_directory(directory, filename, **options):
                     forwarded to :func:`send_file`.
     """
     filename = safe_join(directory, filename)
+    if not os.path.isabs(filename):
+        filename = os.path.join(current_app.root_path, filename)
     if not os.path.isfile(filename):
         raise NotFound()
     options.setdefault('conditional', True)

@@ -38,6 +38,15 @@ class JSONTestCase(FlaskTestCase):
         rv = c.post('/json', data='malformed', content_type='application/json')
         self.assert_equal(rv.status_code, 400)
 
+    def test_json_custom_mimetypes(self):
+        app = flask.Flask(__name__)
+        @app.route('/json', methods=['POST'])
+        def return_json():
+            return flask.request.get_json()
+        c = app.test_client()
+        rv = c.post('/json', data='"foo"', content_type='application/x+json')
+        self.assert_equal(rv.data, b'foo')
+
     def test_json_body_encoding(self):
         app = flask.Flask(__name__)
         app.testing = True
@@ -295,6 +304,21 @@ class SendfileTestCase(FlaskTestCase):
             # etags
             self.assert_equal(len(captured), 1)
             with catch_warnings() as captured:
+                class PyStringIO(object):
+                    def __init__(self, *args, **kwargs):
+                        self._io = StringIO(*args, **kwargs)
+                    def __getattr__(self, name):
+                        return getattr(self._io, name)
+                f = PyStringIO('Test')
+                f.name = 'test.txt'
+                rv = flask.send_file(f)
+                rv.direct_passthrough = False
+                self.assert_equal(rv.data, b'Test')
+                self.assert_equal(rv.mimetype, 'text/plain')
+                rv.close()
+            # attachment_filename and etags
+            self.assert_equal(len(captured), 3)
+            with catch_warnings() as captured:
                 f = StringIO('Test')
                 rv = flask.send_file(f, mimetype='text/plain')
                 rv.direct_passthrough = False
@@ -384,6 +408,17 @@ class SendfileTestCase(FlaskTestCase):
             rv = flask.send_file('static/index.html')
             cc = parse_cache_control_header(rv.headers['Cache-Control'])
             self.assert_equal(cc.max_age, 10)
+            rv.close()
+
+    def test_send_from_directory(self):
+        app = flask.Flask(__name__)
+        app.testing = True
+        app.root_path = os.path.join(os.path.dirname(__file__),
+                                     'test_apps', 'subdomaintestmodule')
+        with app.test_request_context():
+            rv = flask.send_from_directory('static', 'hello.txt')
+            rv.direct_passthrough = False
+            self.assert_equal(rv.data.strip(), b'Hello Subdomain')
             rv.close()
 
 

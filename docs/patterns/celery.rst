@@ -60,12 +60,12 @@ Flask::
 
     from flask import Flask
 
-    app = Flask(__name__)
-    app.config.update(
+    flask_app = Flask(__name__)
+    flask_app.config.update(
         CELERY_BROKER_URL='redis://localhost:6379',
         CELERY_RESULT_BACKEND='redis://localhost:6379'
     )
-    celery = make_celery(app)
+    celery = make_celery(flask_app)
 
 
     @celery.task()
@@ -86,7 +86,7 @@ disappointed to learn that your ``.wait()`` will never actually return.
 That's because you also need to run celery.  You can do that by running
 celery as a worker::
 
-    $ celery -A your_application worker
+    $ celery -A your_application.celery worker
 
 The ``your_application`` string has to point to your application's package
 or module that creates the `celery` object.

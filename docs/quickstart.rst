@@ -236,8 +236,9 @@ below.  It tells Flask to behave as though it is handling a request, even
 though we are interacting with it through a Python shell.  Have a look at the
 explanation below. :ref:`context-locals`).
 
-Why would you want to build URLs instead of hard-coding them into your
-templates?  There are three good reasons for this:
+Why would you want to build URLs using the URL reversing function :func:`~flask.url_for` 
+instead of hard-coding them into your templates?  There are three good reasons 
+for this:
 
 1. Reversing is often more descriptive than hard-coding the URLs.  More
    importantly, it allows you to change URLs in one go, without having to
@@ -676,9 +677,9 @@ converting return values into response objects is as follows:
     default parameters.
 3.  If a tuple is returned the items in the tuple can provide extra
     information.  Such tuples have to be in the form ``(response, status,
-    headers)`` where at least one item has to be in the tuple.  The
-    `status` value will override the status code and `headers` can be a
-    list or dictionary of additional header values.
+    headers)`` or ``(response, headers)`` where at least one item has
+    to be in the tuple.  The `status` value will override the status code
+    and `headers` can be a list or dictionary of additional header values.
 4.  If none of that works, Flask will assume the return value is a
     valid WSGI application and convert that into a response object.
 
