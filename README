@@ -13,7 +13,8 @@
 
     ~ What is Flask Async?
 
-      It's a fork of Flask to run on Python 3.3+ using asyncio.
+      It's a fork of Flask to run on Python 3.3+ using asyncio.  It supports
+      both sync and async web applications.
 
     ~ What do I need?
 

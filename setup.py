@@ -82,7 +82,7 @@ setup(
     url='http://github.com/mrdon/flask/',
     license='BSD',
     author='Armin Ronacher, Don Brown',
-    author_email='armin.ronacher@active-4.com',
+    author_email='mrdon@twdata.org',
     description='A fork of Flask to support asyncio',
     long_description=__doc__,
     packages=['flask', 'flask.ext', 'flask.testsuite', 'werkzeug'],
