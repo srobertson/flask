@@ -77,7 +77,7 @@ class run_audit(Command):
             print("No problems found in sourcecode.")
 
 setup(
-    name='Flask Async',
+    name='Flask-Async',
     version='0.11.0.a1',
     url='http://github.com/mrdon/flask/',
     license='BSD',
