@@ -23,6 +23,9 @@ except ImportError:
     except ImportError:
         from _thread import get_ident
 
+import asyncio
+def get_ident():
+    return id(asyncio.Task.current_task())
 
 def release_local(local):
     """Releases the contents of the local for the current context.
