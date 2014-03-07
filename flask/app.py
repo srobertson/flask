@@ -1825,7 +1825,17 @@ class Flask(_PackageBoundObject):
             except Exception as e:
                 error = e
                 response = yield from self.make_response(self.handle_exception(e))
-            rv = yield from call_maybe_yield(response, environ, start_response)
+            try:
+                rv = yield from call_maybe_yield(response, environ, start_response)
+            except Exception as e:
+                error = e
+                if not hasattr(response, 'response'):
+                    # it's not too late to show an error
+                    response = yield from self.make_response(self.handle_exception(e))
+                    rv = yield from call_maybe_yield(response, environ, start_response)
+                else:
+                    # all is too late
+                    return []
 
             return rv
         finally:
