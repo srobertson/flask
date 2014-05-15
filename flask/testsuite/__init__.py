@@ -19,6 +19,7 @@ import warnings
 import unittest
 from functools import update_wrapper
 from contextlib import contextmanager
+import werkzeug
 from werkzeug.utils import import_string, find_modules
 from flask._compat import reraise, StringIO
 
@@ -122,6 +123,9 @@ class FlaskTestCase(unittest.TestCase):
         self.assert_equal(leaks, [])
 
     def setup(self):
+        # necessary as tests assume local values set during request will be available outside the handler,
+        # i.e. in the test code.
+        werkzeug.local.use_ident_fallback = True
         pass
 
     def teardown(self):

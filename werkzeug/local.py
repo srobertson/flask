@@ -16,16 +16,28 @@ from werkzeug._compat import PY2, implements_bool
 # for the context.  If greenlets are not available we fall back to the
 # current thread ident depending on where it is.
 try:
-    from greenlet import getcurrent as get_ident
+    from greenlet import getcurrent as get_ident_fallback
 except ImportError:
     try:
-        from thread import get_ident
+        from thread import get_ident as get_ident_fallback
     except ImportError:
-        from _thread import get_ident
+        from _thread import get_ident as get_ident_fallback
+
+
+# Allows tests to use fallback, i.e. the thread identity
+use_ident_fallback = False
 
 import asyncio
 def get_ident():
-    return id(asyncio.Task.current_task())
+    if use_ident_fallback:
+        ident = get_ident_fallback()
+    else:
+        task = asyncio.Task.current_task()
+        if task:
+            ident = id(task)
+        else:
+            ident = get_ident_fallback()
+    return ident
 
 def release_local(local):
     """Releases the contents of the local for the current context.
@@ -135,6 +147,7 @@ class LocalStack(object):
                 raise RuntimeError('object unbound')
             return rv
         return LocalProxy(_lookup)
+
 
     def push(self, obj):
         """Pushes a new item to the stack"""
