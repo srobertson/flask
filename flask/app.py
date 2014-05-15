@@ -12,6 +12,7 @@ import logging
 
 import os
 import sys
+import click
 from threading import Lock
 from datetime import timedelta
 from itertools import chain
@@ -121,6 +122,9 @@ class Flask(_PackageBoundObject):
        The `instance_path` and `instance_relative_config` parameters were
        added.
 
+    .. versionadded:: 1.0
+       The `root_path` parameter was added.
+
     :param import_name: the name of the application package
     :param static_url_path: can be used to specify a different path for the
                             static files on the web.  Defaults to the name
@@ -140,6 +144,11 @@ class Flask(_PackageBoundObject):
                                      for loading the config are assumed to
                                      be relative to the instance path instead
                                      of the application root.
+    :param root_path: Flask by default will automatically calculate the path
+                      to the root of the application.  In certain situations
+                      this cannot be achieved (for instance if the package
+                      is a Python 3 namespace package) and needs to be
+                      manually defined.
     """
 
     #: The class that is used for request objects.  See :class:`~flask.Request`
@@ -177,6 +186,17 @@ class Flask(_PackageBoundObject):
     request_globals_class = property(_get_request_globals_class,
                                      _set_request_globals_class)
     del _get_request_globals_class, _set_request_globals_class
+
+    #: The class that is used for the ``config`` attribute of this app.
+    #: Defaults to :class:`~flask.Config`.
+    #:
+    #: Example use cases for a custom class:
+    #:
+    #: 1. Default values for certain config options.
+    #: 2. Access to config values through attributes in addition to keys.
+    #:
+    #: .. versionadded:: 1.0
+    config_class = Config
 
     #: The debug flag.  Set this to `True` to enable debugging of the
     #: application.  In debug mode the debugger will kick in when an unhandled
@@ -297,6 +317,7 @@ class Flask(_PackageBoundObject):
         'JSON_AS_ASCII':                        True,
         'JSON_SORT_KEYS':                       True,
         'JSONIFY_PRETTYPRINT_REGULAR':          True,
+        'TEMPLATES_AUTO_RELOAD':                True,
     })
 
     #: The rule object to use for URL rules created.  This is used by
@@ -318,9 +339,11 @@ class Flask(_PackageBoundObject):
 
     def __init__(self, import_name, static_path=None, static_url_path=None,
                  static_folder='static', template_folder='templates',
-                 instance_path=None, instance_relative_config=False):
+                 instance_path=None, instance_relative_config=False,
+                 root_path=None):
         _PackageBoundObject.__init__(self, import_name,
-                                     template_folder=template_folder)
+                                     template_folder=template_folder,
+                                     root_path=root_path)
         if static_path is not None:
             from warnings import warn
             warn(DeprecationWarning('static_path is now called '
@@ -457,6 +480,12 @@ class Flask(_PackageBoundObject):
             None: [_default_template_ctx_processor]
         }
 
+        #: A list of shell context processor functions that should be run
+        #: when a shell context is created.
+        #:
+        #: .. versionadded:: 1.0
+        self.shell_context_processors = []
+
         #: all the attached blueprints in a dictionary by name.  Blueprints
         #: can be attached multiple times so this dictionary does not tell
         #: you how often they got attached.
@@ -511,6 +540,14 @@ class Flask(_PackageBoundObject):
             self.add_url_rule(self.static_url_path + '/<path:filename>',
                               endpoint='static',
                               view_func=self.send_static_file)
+
+        #: The click command line context for this application.  Commands
+        #: registered here show up in the ``flask`` command once the
+        #: application has been discovered.  The default commands are
+        #: provided by Flask itself and can be overridden.
+        #:
+        #: This is an instance of a :class:`click.Group` object.
+        self.cli = click.Group(self)
 
     def _get_error_handlers(self):
         from warnings import warn
@@ -613,7 +650,7 @@ class Flask(_PackageBoundObject):
         root_path = self.root_path
         if instance_relative:
             root_path = self.instance_path
-        return Config(root_path, self.default_config)
+        return self.config_class(root_path, self.default_config)
 
     def auto_find_instance_path(self):
         """Tries to locate the instance path if it was not provided to the
@@ -647,10 +684,16 @@ class Flask(_PackageBoundObject):
         this function to customize the behavior.
 
         .. versionadded:: 0.5
+        .. versionchanged:: 1.0
+           ``Environment.auto_reload`` set in accordance with
+           ``TEMPLATES_AUTO_RELOAD`` configuration option.
         """
         options = dict(self.jinja_options)
         if 'autoescape' not in options:
             options['autoescape'] = self.select_jinja_autoescape
+        if 'auto_reload' not in options:
+            options['auto_reload'] = self.debug \
+                or self.config['TEMPLATES_AUTO_RELOAD']
         rv = Environment(self, **options)
         rv.globals.update(
             url_for=url_for,
@@ -723,6 +766,18 @@ class Flask(_PackageBoundObject):
         # existing views.
         context.update(orig_ctx)
 
+    def make_shell_context(self):
+        """Returns the shell context for an interactive shell for this
+        application.  This runs all the registered shell context
+        processors.
+
+        .. versionadded:: 1.0
+        """
+        rv = {'app': self, 'g': g}
+        for processor in self.shell_context_processors:
+            rv.update(processor())
+        return rv
+
     def run(self, host=None, port=None, debug=None, **options):
         """Runs the application on a local development server.  If the
         :attr:`debug` flag is set the server will automatically reload
@@ -732,6 +787,11 @@ class Flask(_PackageBoundObject):
         code execution on the interactive debugger, you can pass
         ``use_evalex=False`` as parameter.  This will keep the debugger's
         traceback screen active, but disable code execution.
+
+        It is not recommended to use this function for development with
+        automatic reloading as this is badly supported.  Instead you should
+        be using the ``flask`` command line script's ``runserver``
+        support.
 
         .. admonition:: Keep in Mind
 
@@ -849,7 +909,7 @@ class Flask(_PackageBoundObject):
         return self.session_interface.make_null_session(self)
 
     def register_module(self, module, **options):
-        """Registers a module with this application.  The keyword argument
+        """Registers a module with this application.  The keyword arguments
         of this function are the same as the ones for the constructor of the
         :class:`Module` class and will override the values of the module if
         provided.
@@ -1063,6 +1123,11 @@ class Flask(_PackageBoundObject):
         handler should be application wide `None` shall be used.
 
         .. versionadded:: 0.7
+            Use :meth:`register_error_handler` instead of modifying
+            :attr:`error_handler_spec` directly, for application wide error
+            handlers.
+
+        .. versionadded:: 0.7
            One can now additionally also register custom exception types
            that do not necessarily have to be a subclass of the
            :class:`~werkzeug.exceptions.HTTPException` class.
@@ -1211,9 +1276,11 @@ class Flask(_PackageBoundObject):
 
     @setupmethod
     def after_request(self, f):
-        """Register a function to be run after each request.  Your function
-        must take one parameter, a :attr:`response_class` object and return
-        a new response object or the same (see :meth:`process_response`).
+        """Register a function to be run after each request.
+
+        Your function must take one parameter, an instance of
+        :attr:`response_class` and return a new response object or the
+        same (see :meth:`process_response`).
 
         As of Flask 0.7 this function might not be executed at the end of the
         request in case an unhandled exception occurred.
@@ -1294,6 +1361,15 @@ class Flask(_PackageBoundObject):
         return f
 
     @setupmethod
+    def shell_context_processor(self, f):
+        """Registers a shell context processor function.
+
+        .. versionadded:: 1.0
+        """
+        self.shell_context_processors.append(f)
+        return f
+
+    @setupmethod
     def url_value_preprocessor(self, f):
         """Registers a function as URL value preprocessor for all view
         functions of the application.  It's called before the view functions
@@ -1368,8 +1444,6 @@ class Flask(_PackageBoundObject):
         # wants the traceback preserved in handle_http_exception.  Of course
         # we cannot prevent users from trashing it themselves in a custom
         # trap_http_exception method so that's their fault then.
-        if isinstance(e, HTTPException) and not self.trap_http_exception(e):
-            return self.handle_http_exception(e)
 
         blueprint_handlers = ()
         handlers = self.error_handler_spec.get(request.blueprint)
@@ -1379,6 +1453,9 @@ class Flask(_PackageBoundObject):
         for typecheck, handler in chain(blueprint_handlers, app_handlers):
             if isinstance(e, typecheck):
                 return handler(e)
+
+        if isinstance(e, HTTPException) and not self.trap_http_exception(e):
+            return self.handle_http_exception(e)
 
         reraise(exc_type, exc_value, tb)
 
@@ -1577,7 +1654,8 @@ class Flask(_PackageBoundObject):
             # some extra logic involved when creating these objects with
             # specific values (like default content type selection).
             if isinstance(rv, (text_type, bytes, bytearray)):
-                rv = self.response_class(rv, headers=headers, status=status_or_headers)
+                rv = self.response_class(rv, headers=headers,
+                                         status=status_or_headers)
                 headers = status_or_headers = None
             else:
                 rv = yield from call_maybe_yield(self.response_class.force_type, rv, request.environ)
@@ -1591,7 +1669,6 @@ class Flask(_PackageBoundObject):
             rv.headers.extend(headers)
 
         return rv
-
 
     def create_url_adapter(self, request):
         """Creates a URL adapter for the given request.  The URL adapter

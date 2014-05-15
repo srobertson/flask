@@ -119,10 +119,35 @@ class ConfigTestCase(FlaskTestCase):
             self.assert_true(0, 'expected config')
         self.assert_false(app.config.from_json('missing.json', silent=True))
 
+    def test_custom_config_class(self):
+        class Config(flask.Config):
+            pass
+        class Flask(flask.Flask):
+            config_class = Config
+        app = Flask(__name__)
+        self.assert_isinstance(app.config, Config)
+        app.config.from_object(__name__)
+        self.common_object_test(app)
+
     def test_session_lifetime(self):
         app = flask.Flask(__name__)
         app.config['PERMANENT_SESSION_LIFETIME'] = 42
         self.assert_equal(app.permanent_session_lifetime.seconds, 42)
+
+    def test_get_namespace(self):
+        app = flask.Flask(__name__)
+        app.config['FOO_OPTION_1'] = 'foo option 1'
+        app.config['FOO_OPTION_2'] = 'foo option 2'
+        app.config['BAR_STUFF_1'] = 'bar stuff 1'
+        app.config['BAR_STUFF_2'] = 'bar stuff 2'
+        foo_options = app.config.get_namespace('FOO_')
+        self.assert_equal(2, len(foo_options))
+        self.assert_equal('foo option 1', foo_options['option_1'])
+        self.assert_equal('foo option 2', foo_options['option_2'])
+        bar_options = app.config.get_namespace('BAR_', lowercase=False)
+        self.assert_equal(2, len(bar_options))
+        self.assert_equal('bar stuff 1', bar_options['STUFF_1'])
+        self.assert_equal('bar stuff 2', bar_options['STUFF_2'])
 
 
 class LimitedLoaderMockWrapper(object):

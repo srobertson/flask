@@ -43,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Flask'
-copyright = u'2013, Armin Ronacher'
+copyright = u'2014, Armin Ronacher'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -244,7 +244,7 @@ latex_additional_files = ['flaskstyle.sty', 'logo.pdf']
 #epub_tocdepth = 3
 
 intersphinx_mapping = {
-    'http://docs.python.org/dev': None,
+    'https://docs.python.org/dev': None,
     'http://werkzeug.pocoo.org/docs/': None,
     'http://www.sqlalchemy.org/docs/': None,
     'http://wtforms.simplecodes.com/docs/0.5/': None,

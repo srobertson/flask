@@ -20,9 +20,9 @@ there is a Flask extension that handles that for you.  This is recommended
 if you want to get started quickly.
 
 You can download `Flask-SQLAlchemy`_ from `PyPI
-<http://pypi.python.org/pypi/Flask-SQLAlchemy>`_.
+<https://pypi.python.org/pypi/Flask-SQLAlchemy>`_.
 
-.. _Flask-SQLAlchemy: http://packages.python.org/Flask-SQLAlchemy/
+.. _Flask-SQLAlchemy: http://pythonhosted.org/Flask-SQLAlchemy/
 
 
 Declarative
@@ -185,6 +185,8 @@ you basically only need the engine::
 Then you can either declare the tables in your code like in the examples
 above, or automatically load them::
 
+    from sqlalchemy import Table
+    
     users = Table('users', metadata, autoload=True)
 
 To insert data you can use the `insert` method.  We have to get a
