@@ -91,7 +91,7 @@ setup(
     author_email='mrdon@twdata.org',
     description='A fork of Flask to support asyncio',
     long_description=__doc__,
-    packages=['flask', 'flask.ext', 'flask.testsuite', 'werkzeug'],
+    packages=['flask', 'flask.ext', 'flask.testsuite', 'werkzeug', 'werkzeug.debug', 'werkzeug.contrib'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
